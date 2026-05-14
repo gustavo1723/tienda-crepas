@@ -1,0 +1,6 @@
+﻿node_modules/
+tienda.db
+server/tienda.db
+server/imagenes/
+*.log
+.DS_Store

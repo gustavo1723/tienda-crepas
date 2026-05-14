@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tienda de Crepas</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Tienda de Crepas</h1>
+
+<div id="productos-container">
+    <!-- Productos se cargan aquí desde /api/productos -->
+</div>
+
+<hr>
+
+<div id="carrito" style="position: fixed; right: 20px; top: 80px; width: 300px; background: #fff; color:#000; padding: 10px; border-radius: 8px;">
+    <h3>Pedido</h3>
+    <div id="carrito-items">(vacío)</div>
+    <p>Total: $<span id="carrito-total">0</span></p>
+    <button id="finalizarBtn" disabled>Finalizar Compra</button>
+</div>
+
+<script>
+// Detectar si está en localhost o en producción
+const API = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
+
+let productos = [];
+let carrito = {};
+
+function renderProductos() {
+    const cont = document.getElementById('productos-container');
+    cont.innerHTML = '';
+    productos.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'producto';
+        
+        const imagenUrl = p.imagen ? `${API}/imagenes/${p.imagen}` : 'https://via.placeholder.com/200x200?text=Sin+Imagen';
+        
+        div.innerHTML = `
+            <img src="${imagenUrl}" alt="${p.nombre}" 
+                 onerror="this.src='https://via.placeholder.com/200x200?text=Error'"
+                 style="width: 200px; height: 200px; object-fit: cover; border-radius: 15px; border: 3px solid #BA7900;">
+            <h3>${p.nombre}</h3>
+            <p>$${p.precio.toFixed(2)}</p>
+            <p style="font-size:0.9em;color:#333">${p.descripcion || ''}</p>
+            <button onclick="agregarAlPedido(${p.id})">Agregar al pedido</button>
+        `;
+        cont.appendChild(div);
+    });
+}
+
+function actualizarCarritoUI() {
+    const itemsDiv = document.getElementById('carrito-items');
+    const totalSpan = document.getElementById('carrito-total');
+    const finalizarBtn = document.getElementById('finalizarBtn');
+
+    const keys = Object.keys(carrito);
+    if (keys.length === 0) {
+        itemsDiv.innerHTML = '(vacío)';
+        totalSpan.textContent = '0';
+        finalizarBtn.disabled = true;
+        return;
+    }
+
+    let html = '<ul style="list-style:none; padding-left:0;">';
+    let total = 0;
+    keys.forEach(id => {
+        const cantidad = carrito[id];
+        const prod = productos.find(p => p.id == id);
+        const subtotal = prod.precio * cantidad;
+        html += `<li style="margin-bottom:5px;">${prod.nombre} x ${cantidad} = $${subtotal.toFixed(2)} 
+                 <button onclick="quitarDelPedido(${id})" style="margin-left:10px; padding:2px 8px;">❌</button></li>`;
+        total += subtotal;
+    });
+    html += '</ul>';
+    itemsDiv.innerHTML = html;
+    totalSpan.textContent = total.toFixed(2);
+    finalizarBtn.disabled = false;
+}
+
+function agregarAlPedido(productoId) {
+    productoId = String(productoId);
+    carrito[productoId] = (carrito[productoId] || 0) + 1;
+    actualizarCarritoUI();
+}
+
+function quitarDelPedido(productoId) {
+    productoId = String(productoId);
+    if (!carrito[productoId]) return;
+    carrito[productoId]--;
+    if (carrito[productoId] <= 0) delete carrito[productoId];
+    actualizarCarritoUI();
+}
+
+document.getElementById('finalizarBtn').addEventListener('click', () => {
+    const items = Object.keys(carrito).map(id => ({ productoId: Number(id), cantidad: carrito[id] }));
+    const total = Number(document.getElementById('carrito-total').textContent);
+
+    if (items.length === 0) {
+        alert('El carrito está vacío');
+        return;
+    }
+
+    fetch(API + '/api/pedido/finalizar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
+        body: JSON.stringify({ items, total })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) return alert('Error: ' + data.error);
+        alert('✅ Compra exitosa. Número de pedido: ' + data.numeroPedido);
+        carrito = {};
+        actualizarCarritoUI();
+    })
+    .catch(err => alert('Error: ' + err));
+});
+
+// Cargar productos al inicio (RUTA CORREGIDA con /api/)
+fetch(API + '/api/productos')
+    .then(r => r.json())
+    .then(json => { 
+        productos = json; 
+        renderProductos(); 
+    })
+    .catch(err => {
+        console.error('Error cargando productos:', err);
+        document.getElementById('productos-container').innerHTML = '<p>❌ Error cargando productos. Asegúrate que el servidor esté corriendo.</p>';
+    });
+</script>
+
+</body>
+</html>
