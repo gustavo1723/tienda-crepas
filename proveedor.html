@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Proveedor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div style="text-align: right; padding: 10px; background: #333; color: white; border-radius: 10px; margin-bottom: 20px;">
+    <span id="usuarioLogueado">Cargando...</span>
+    <button id="logoutBtn" style="margin-left: 20px; padding: 5px 15px;">Cerrar Sesión</button>
+</div>
+
+<h1>Panel Proveedor</h1>
+
+<section style="max-width:700px;margin:auto;">
+    <h2>Agregar nuevo producto</h2>
+    <form id="formNuevo" enctype="multipart/form-data">
+        <input type="text" id="nombre" placeholder="Nombre" required><br><br>
+        <input type="text" id="descripcion" placeholder="Descripción"><br><br>
+        <input type="number" id="precio" placeholder="Precio" step="0.01" required><br><br>
+        
+        <label for="imagen">Imagen del producto:</label><br>
+        <input type="file" id="imagen" accept="image/*" required><br>
+        <small style="color: #666;">Formatos permitidos: JPG, PNG, GIF, WEBP (Máx 5MB)</small><br><br>
+        
+        <button type="submit">Agregar Producto</button>
+    </form>
+
+    <h2>Productos</h2>
+    <div id="listaProductos" style="display: flex; flex-wrap: wrap; gap: 20px;"></div>
+</section>
+
+<script>
+const API = '';
+function cargarProductos() {
+    fetch(API + '/api/productos', { credentials: 'include' })
+        .then(r => r.json())
+        .then(list => {
+            const cont = document.getElementById('listaProductos');
+            cont.innerHTML = '';
+            list.forEach(p => {
+                const imagenUrl = p.imagen ? `${API}/imagenes/${p.imagen}` : 'https://via.placeholder.com/150';
+                
+                const div = document.createElement('div');
+                div.style = 'border:1px solid #ccc;padding:10px;margin:6px;width:250px;text-align:center;background:#fff;color:#000;border-radius:10px;';
+                div.innerHTML = `
+                    <img src="${imagenUrl}" alt="${p.nombre}" 
+                         onerror="this.src='https://via.placeholder.com/150'"
+                         style="width: 150px; height: 150px; object-fit: cover; border-radius: 10px; margin-bottom: 10px;">
+                    <b>${p.nombre}</b><br>
+                    $${p.precio.toFixed(2)}<br>
+                    <small>${p.descripcion || ''}</small><br>
+                    <div style="margin-top: 10px;">
+                        <button onclick="editar(${p.id})">Editar</button>
+                        <button onclick="eliminar(${p.id})">Eliminar</button>
+                    </div>
+                `;
+                cont.appendChild(div);
+            });
+        })
+        .catch(err => console.error('Error al cargar productos:', err));
+}
+
+document.getElementById('formNuevo').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    formData.append('nombre', document.getElementById('nombre').value.trim());
+    formData.append('descripcion', document.getElementById('descripcion').value.trim());
+    formData.append('precio', document.getElementById('precio').value);
+    formData.append('imagen', document.getElementById('imagen').files[0]);
+
+    try {
+        const response = await fetch(API + '/api/admin/producto/nuevo', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+        
+        const data = await response.json();
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            alert('Producto agregado con imagen');
+            document.getElementById('formNuevo').reset();
+            cargarProductos();
+        }
+    } catch (error) {
+        alert('Error al subir: ' + error);
+    }
+});
+
+function eliminar(id) {
+    if (!confirm('¿Eliminar producto? Se borrará también su imagen.')) return;
+    fetch(API + '/api/admin/producto/eliminar/' + id, { 
+        method: 'DELETE',
+        credentials: 'include'
+    })
+        .then(r => r.json())
+        .then(() => cargarProductos())
+        .catch(err => alert('Error: ' + err));
+}
+
+function editar(id) {
+    fetch(API + '/api/producto/' + id, { credentials: 'include' })
+        .then(r => r.json())
+        .then(prod => {
+            const nuevoNombre = prompt('Nuevo nombre:', prod.nombre);
+            if (nuevoNombre === null) return;
+            
+            const nuevoPrecio = prompt('Nuevo precio:', prod.precio);
+            if (nuevoPrecio === null) return;
+            
+            const nuevaDesc = prompt('Nueva descripción:', prod.descripcion || '');
+            if (nuevaDesc === null) return;
+            
+            if (confirm('¿Quieres cambiar la imagen?')) {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = () => {
+                    const formData = new FormData();
+                    formData.append('nombre', nuevoNombre.trim() || prod.nombre);
+                    formData.append('descripcion', nuevaDesc.trim() || prod.descripcion);
+                    formData.append('precio', nuevoPrecio);
+                    formData.append('imagen', input.files[0]);
+                    formData.append('imagenActual', prod.imagen || '');
+                    
+                    fetch(API + '/api/admin/producto/editar/' + id, {
+                        method: 'PUT',
+                        credentials: 'include',
+                        body: formData
+                    })
+                    .then(r => r.json())
+                    .then(() => cargarProductos())
+                    .catch(err => alert('Error: ' + err));
+                };
+                input.click();
+            } else {
+                fetch(API + '/api/admin/producto/editar/' + id, {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        nombre: nuevoNombre.trim() || prod.nombre,
+                        descripcion: nuevaDesc.trim() || prod.descripcion,
+                        precio: nuevoPrecio,
+                        imagen: prod.imagen || ''
+                    })
+                })
+                .then(r => r.json())
+                .then(() => cargarProductos())
+                .catch(err => alert('Error: ' + err));
+            }
+        });
+}
+
+// Verificar autenticación al cargar la página
+fetch(API + '/api/verificar-sesion', { credentials: 'include' })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.autenticado) {
+            window.location.href = 'login.html';
+        } else {
+            document.getElementById('usuarioLogueado').textContent = '👤 ' + data.usuario;
+            cargarProductos();
+        }
+    });
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await fetch(API + '/api/logout', { method: 'POST', credentials: 'include' });
+    window.location.href = 'login.html';
+});
+</script>
+
+</body>
+</html>

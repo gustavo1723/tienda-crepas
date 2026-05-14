@@ -67,26 +67,26 @@ const upload = multer({
 app.use('/imagenes', express.static(imagenesDir));
 
 // Servir archivos del cliente (HTML, CSS, JS)
-app.use(express.static(path.join(__dirname, '../client')));
-
-// Ruta raíz
+app.use(express.static(path.join(__dirname, '..')));
+// Rutas directas para todos los HTML
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/index.html'));
+    res.sendFile(path.join(__dirname, '../index.html'));
 });
 
-// Ruta para login.html
+app.get('/index.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../index.html'));
+});
+
 app.get('/login.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/login.html'));
+    res.sendFile(path.join(__dirname, '../login.html'));
 });
 
-// Ruta para proveedor.html
 app.get('/proveedor.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/proveedor.html'));
+    res.sendFile(path.join(__dirname, '../proveedor.html'));
 });
 
-// Ruta para style.css
 app.get('/style.css', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/style.css'));
+    res.sendFile(path.join(__dirname, '../style.css'));
 });
 
 // ========== MIDDLEWARE DE AUTENTICACIÓN ==========
