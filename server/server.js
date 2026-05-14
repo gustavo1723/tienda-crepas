@@ -74,6 +74,21 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 
+// Ruta para login.html
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/login.html'));
+});
+
+// Ruta para proveedor.html
+app.get('/proveedor.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/proveedor.html'));
+});
+
+// Ruta para style.css
+app.get('/style.css', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/style.css'));
+});
+
 // ========== MIDDLEWARE DE AUTENTICACIÓN ==========
 function requireAuth(req, res, next) {
     if (!req.session.usuarioId) {
