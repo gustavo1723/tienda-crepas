@@ -69,6 +69,11 @@ app.use('/imagenes', express.static(imagenesDir));
 // Servir archivos del cliente (HTML, CSS, JS)
 app.use(express.static(path.join(__dirname, '../client')));
 
+// Ruta raíz
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/index.html'));
+});
+
 // ========== MIDDLEWARE DE AUTENTICACIÓN ==========
 function requireAuth(req, res, next) {
     if (!req.session.usuarioId) {
