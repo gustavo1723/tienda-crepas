@@ -33,8 +33,7 @@
 </section>
 
 <script>
-const API = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
-
+const API = '';
 function cargarProductos() {
     fetch(API + '/api/productos', { credentials: 'include' })
         .then(r => r.json())
